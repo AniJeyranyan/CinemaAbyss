@@ -129,3 +129,75 @@ jobs:
           labels: ${{ steps.meta-proxy.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  # Runs only after every image is pushed: deploys the Helm chart to a fresh Minikube cluster,
+  # runs the in-cluster Helm tests, then the Postman suite through the ingress.
+  deploy-and-test:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: tests/postman/package-lock.json
+
+      - name: Start Minikube and ingress
+        run: |
+          curl -sLo minikube https://github.com/kubernetes/minikube/releases/latest/download/minikube-linux-amd64
+          sudo install minikube /usr/local/bin/minikube
+          minikube start --driver=docker --wait=all
+          minikube addons enable ingress
+          kubectl -n ingress-nginx wait --for=condition=ready pod -l app.kubernetes.io/component=controller --timeout=300s
+
+      - name: Deploy with Helm
+        env:
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Build the pull secret at runtime so no token is stored in the repository
+          AUTH=$(printf '%s:%s' "$GHCR_USER" "$GHCR_TOKEN" | base64 -w0)
+          DOCKER_CONFIG_B64=$(printf '{"auths":{"ghcr.io":{"auth":"%s"}}}' "$AUTH" | base64 -w0)
+          helm upgrade --install cinemaabyss ./src/kubernetes/helm \
+            --namespace cinemaabyss --create-namespace \
+            --set-string imagePullSecrets.dockerconfigjson="$DOCKER_CONFIG_B64" \
+            --wait --timeout 10m
+
+      - name: Helm test (in-cluster API checks)
+        run: helm test cinemaabyss --namespace cinemaabyss --logs --timeout 5m
+
+      - name: Expose ingress and run Postman suite
+        run: |
+          sudo -E env "PATH=$PATH" minikube tunnel --cleanup > tunnel.log 2>&1 &
+          echo "127.0.0.1 cinemaabyss.example.com" | sudo tee -a /etc/hosts
+          for i in $(seq 1 30); do curl -sf http://cinemaabyss.example.com/health && break; sleep 5; done
+          cd tests/postman
+          npm ci
+          npm run test:kubernetes
+
+      - name: Upload Postman reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: k8s-api-test-reports
+          path: tests/postman/reports
+          if-no-files-found: ignore
+
+      - name: Diagnostics on failure
+        if: failure()
+        run: |
+          kubectl -n cinemaabyss get pods -o wide
+          kubectl -n cinemaabyss get events --sort-by=.lastTimestamp | tail -40
+          kubectl -n cinemaabyss logs deploy/events-service --tail=200 || true
+          kubectl -n cinemaabyss logs deploy/proxy-service --tail=200 || true
