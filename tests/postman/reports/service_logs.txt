@@ -1,0 +1,31 @@
+PS C:\WINDOWS\system32> kubectl -n cinemaabyss logs deploy/events-service
+warn: Microsoft.AspNetCore.Hosting.Diagnostics[15]
+      Overriding HTTP_PORTS '8080' and HTTPS_PORTS ''. Binding to values defined by URLS instead 'http://0.0.0.0:8082'.
+info: Microsoft.Hosting.Lifetime[14]
+      Now listening on: http://0.0.0.0:8082
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Production
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: /app
+info: CinemaAbyss.Events.Infrastructure.Kafka.KafkaConsumerBackgroundService[0]
+      Consuming movie-events, user-events, payment-events as group events-service
+info: CinemaAbyss.Events.Infrastructure.Kafka.KafkaConsumerBackgroundService[0]
+      [consumer] topic=movie-events partition=0 offset=0 key=6 value={"id":"bdada498-c57d-45b0-9128-273f7ee6dfb1","type":"movie","timestamp":"2026-10-04T19:28:43.07793+00:00","payload":{"movie_id":6,"title":"Test Movie Event","action":"viewed","user_id":4}}
+info: CinemaAbyss.Events.Infrastructure.Kafka.KafkaConsumerBackgroundService[0]
+      [consumer] topic=user-events partition=0 offset=0 key=4 value={"id":"3a1519a6-6760-4d0b-8320-db47bb3e5a36","type":"user","timestamp":"2026-10-04T19:28:44.318+00:00","payload":{"user_id":4,"username":"testuser","action":"logged_in"}}
+info: CinemaAbyss.Events.Infrastructure.Kafka.KafkaConsumerBackgroundService[0]
+      [consumer] topic=payment-events partition=0 offset=0 key=2 value={"id":"2a37d98a-1fa3-4cf5-bb57-13cd8681e117","type":"payment","timestamp":"2026-10-04T19:28:45.253+00:00","payload":{"payment_id":2,"user_id":4,"amount":9.99,"status":"completed","method_type":"credit_card"}}
+info: CinemaAbyss.Events.Infrastructure.Kafka.KafkaConsumerBackgroundService[0]
+      [consumer] topic=movie-events partition=0 offset=1 key=1 value={"id":"86bcff58-aae7-47cf-a086-3ff59afc2703","type":"movie","timestamp":"2026-10-04T19:29:53.3655765+00:00","payload":{"movie_id":1,"title":"Test Movie Event","action":"viewed","user_id":1}}
+info: CinemaAbyss.Events.Infrastructure.Kafka.KafkaConsumerBackgroundService[0]
+      [consumer] topic=user-events partition=0 offset=1 key=1 value={"id":"0cc9d540-8b53-4904-bc33-e34027d13898","type":"user","timestamp":"2026-10-04T12:00:00+00:00","payload":{"user_id":1,"username":"testuser","action":"logged_in"}}
+info: CinemaAbyss.Events.Infrastructure.Kafka.KafkaConsumerBackgroundService[0]
+      [consumer] topic=payment-events partition=0 offset=1 key=1 value={"id":"8de54691-37c6-4b0a-a9b1-7cf11c64e789","type":"payment","timestamp":"2026-10-04T12:00:00+00:00","payload":{"payment_id":1,"user_id":1,"amount":9.99,"status":"completed","method_type":"credit_card"}}
+info: CinemaAbyss.Events.Infrastructure.Kafka.KafkaConsumerBackgroundService[0]
+      [consumer] topic=movie-events partition=0 offset=2 key=1 value={"id":"e631e222-4d52-465d-9ccb-8f5ef2c86f0a","type":"movie","timestamp":"2026-10-04T19:30:10.9767932+00:00","payload":{"movie_id":1,"title":"Test Movie Event","action":"viewed","user_id":1}}
+info: CinemaAbyss.Events.Infrastructure.Kafka.KafkaConsumerBackgroundService[0]
+      [consumer] topic=user-events partition=0 offset=2 key=1 value={"id":"41e8c34d-1f24-49e3-8fff-b88e53501c1b","type":"user","timestamp":"2026-10-04T12:00:00+00:00","payload":{"user_id":1,"username":"testuser","action":"logged_in"}}
+info: CinemaAbyss.Events.Infrastructure.Kafka.KafkaConsumerBackgroundService[0]
+      [consumer] topic=payment-events partition=0 offset=2 key=1 value={"id":"3349d17e-badd-4b59-9ff5-d8c247a05458","type":"payment","timestamp":"2026-10-04T12:00:00+00:00","payload":{"payment_id":1,"user_id":1,"amount":9.99,"status":"completed","method_type":"credit_card"}}

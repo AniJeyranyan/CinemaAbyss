@@ -1,358 +1,144 @@
-## Изучите [README.md](.\README.md) файл и структуру проекта.
+# CinemaAbyss: implementation
 
-# Задание 1
+# Task 1: To-be architecture
 
-1. Спроектируйте to be архитектуру КиноБездны, разделив всю систему на отдельные домены и организовав интеграционное взаимодействие и единую точку вызова сервисов.
-Результат представьте в виде контейнерной диаграммы в нотации С4.
-Добавьте ссылку на файл в этот шаблон
-[ссылка на файл](docs/architecture/to-be-container-diagram.md)
+The to-be architecture is a C4 container diagram that splits the system into five domains.
 
-# Задание 2
+Steps:
+1. Read the README and the project structure to identify the existing services and their data.
+2. Split the system into domains: Movies, Users, Payments, Subscriptions, and Events / Integration.
+3. Give each domain its own service and database: Movies (MongoDB), Users (PostgreSQL), Payments (PostgreSQL), Subscriptions (PostgreSQL), Events (MongoDB).
+4. Define the integration: synchronous REST through the API Gateway or a domain's public API, and asynchronous events over Kafka (`movie-events`, `user-events`, `payment-events`).
+5. Place a single entry point, the API Gateway, in front of all domains. It routes by domain, applies the Strangler Fig flag to `/api/movies*`, and validates JWTs.
+6. Describe the subscription purchase without a distributed transaction: Subscriptions creates the subscription as `pending`, Payments charges and publishes the result, and Subscriptions moves it to `active` or `cancelled`.
+7. Write the diagram and its details in [docs/architecture/to-be-container-diagram.md](docs/architecture/to-be-container-diagram.md).
 
-### 1. Proxy
-Команда КиноБездны уже выделила сервис метаданных о фильмах movies и вам необходимо реализовать бесшовный переход с применением паттерна Strangler Fig в части реализации прокси-сервиса (API Gateway), с помощью которого можно будет постепенно переключать траффик, используя фиче-флаг.
+![C4 container diagram of the to-be CinemaAbyss architecture](docs/architecture/images/to-be-container-diagram.png)
 
+# Task 2: Proxy and Kafka events service
 
-Реализуйте сервис на любом языке программирования в ./src/microservices/proxy.
-Конфигурация для запуска сервиса через docker-compose уже добавлена
-```yaml
-  proxy-service:
-    build:
-      context: ./src/microservices/proxy
-      dockerfile: Dockerfile
-    container_name: cinemaabyss-proxy-service
-    depends_on:
-      - monolith
-      - movies-service
-      - events-service
-    ports:
-      - "8000:8000"
-    environment:
-      PORT: 8000
-      MONOLITH_URL: http://monolith:8080
-      #монолит
-      MOVIES_SERVICE_URL: http://movies-service:8081 #сервис movies
-      EVENTS_SERVICE_URL: http://events-service:8082 
-      GRADUAL_MIGRATION: "true" # вкл/выкл простого фиче-флага
-      MOVIES_MIGRATION_PERCENT: "50" # процент миграции
-    networks:
-      - cinemaabyss-network
-```
+## 1. Proxy (API Gateway)
 
-- После реализации запустите postman тесты - они все должны быть зеленые (кроме events).
-- Отправьте запросы к API Gateway:
+The proxy is an ASP.NET Core 8 service in `src/microservices/proxy`, structured with Clean Architecture:
+- `Domain`: routing rules (`RouteResolver`) and the migration policy (`MigrationPolicy`).
+- `Application`: the `ForwardHttpRequestCommand` handler and the interfaces it depends on.
+- `Infrastructure`: HTTP forwarding, option binding and the random roll.
+- `Api`: the endpoints, environment mapping and Dockerfile.
+
+Steps:
+1. Create the four layers and their project references.
+2. Implement the routing rules in `RouteResolver`:
+   - `/health` is answered by the gateway itself.
+   - `/api/movies/health` always goes to movies-service.
+   - `/api/movies*` is split by the feature flag. With `GRADUAL_MIGRATION=true`, a random roll from 0 to 99 is compared with `MOVIES_MIGRATION_PERCENT`: below it goes to movies-service, otherwise to the monolith. With `GRADUAL_MIGRATION=false`, all movie traffic goes to movies-service.
+   - `/api/events*` goes to events-service.
+   - Everything else goes to the monolith.
+3. Implement the forwarding command: it copies the method, path, query, headers and body to the chosen backend and returns the upstream status and body. An unreachable backend returns `502`.
+4. Read the environment variables from the task (`MONOLITH_URL`, `MOVIES_SERVICE_URL`, `EVENTS_SERVICE_URL`, `GRADUAL_MIGRATION`, `MOVIES_MIGRATION_PERCENT`) through the options classes.
+5. Add the Dockerfile and the `proxy-service` entry to `docker-compose.yml`.
+6. Add unit tests for the routing rules and the forwarding handler: `tests/CinemaAbyss.Proxy.UnitTests`, 20 tests, all passing.
+7. Start the stack and run the Postman suite: `docker compose up -d --build`, then `cd tests/postman && npm run test:local`. All 22 requests and 42 assertions pass, including the Proxy and Events folders.
+
+![Postman test results](tests/postman/reports/test_results.png)
+
+8. Test the gradual transition: change `MOVIES_MIGRATION_PERCENT` in `docker-compose.yml`, run `docker compose up -d proxy-service`, and call `curl http://localhost:8000/api/movies`. The proxy logs `Start processing HTTP request GET http://<backend>:<port>/...` for each request, so `docker logs cinemaabyss-proxy-service` shows which backend served it.
+
+## 2. Kafka events service
+
+The events service is an MVP that checks how easily Kafka fits into the architecture. It is an ASP.NET Core 8 service with Confluent.Kafka in `src/microservices/events`, using the same layers as the proxy.
+
+Steps:
+1. Define the event envelope (`id`, `type`, `timestamp`, `payload`) and the three payloads: movie, user and payment.
+2. Implement the producer endpoints `POST /api/events/movie`, `/api/events/user` and `/api/events/payment`. Each validates the request, wraps it in the envelope, publishes it to its topic and returns `201` with the partition and offset. Invalid input returns `400`.
+3. Key each message by the movie, user or payment ID.
+4. Implement the consumer as a background service in the same process. It subscribes to all three topics and logs each message as `[consumer] topic=... partition=... offset=... key=... value=...`.
+5. Create the topics in docker-compose with `KAFKA_CREATE_TOPICS` (`movie-events`, `user-events`, `payment-events`, one partition each) and add the `events-service` entry.
+6. Run the Postman events tests (`Create Movie Event`, `Create User Event`, `Create Payment Event`, each returning `201` with `status: success`).
+7. Check the result in the Kafka UI at http://localhost:8090 and in the service log with `docker logs cinemaabyss-events-service`.
+
+![Kafka UI: topics overview](tests/postman/reports/Kafka_state_1.png)
+
+![Kafka UI: messages in movie-events](tests/postman/reports/Kafka_state_2.png)
+
+![Kafka UI: messages in payment-events](tests/postman/reports/Kafka_state_3.png)
+
+![Kafka UI: messages in user-events](tests/postman/reports/Kafka_state_4.png)
+
+# Task 3: CI/CD and Kubernetes
+
+## CI/CD
+
+The workflow is `.github/workflows/docker-build-push.yml`.
+
+Steps:
+1. Set the triggers: pushes to `main` and `cinema` that change `src/**` or the workflow file, published releases, and manual `workflow_dispatch`.
+2. In `build-and-push`, log in to `ghcr.io` with `GITHUB_TOKEN` and build and push the monolith, movies-service, events-service and proxy-service images. Each image gets semver, short SHA, branch and `latest` tags.
+3. Add the `deploy-and-test` job, which runs after all images are pushed:
+   - start Minikube with the ingress add-on and wait for the ingress controller;
+   - build the image pull secret at run time from the GitHub user and `GITHUB_TOKEN`, so no token is stored in the repository;
+   - run `helm upgrade --install` on `src/kubernetes/helm`, then `helm test`;
+   - run `minikube tunnel`, map `cinemaabyss.example.com` in `/etc/hosts`, and run `npm run test:kubernetes`;
+   - upload the Postman reports, and on failure print the pods, events and service logs.
+4. The `API Tests` workflow (`api-tests.yml`) runs `docker compose up`, waits for the health endpoints, and runs the Postman suite on each push.
+
+The build for commit `307e7d5` is green for both `Docker Build and Push` and `API Tests`:
+
+![GitHub Actions: green runs](tests/postman/reports/CI_CD_Github_Workflow.png)
+
+## Proxy in Kubernetes
+
+Steps:
+1. Create a GitHub classic token with the `read:packages` scope and create the pull secret. The committed `src/kubernetes/dockerconfigsecret.yaml` keeps a placeholder, and the value is supplied locally.
+2. Point the images in `src/kubernetes/*.yaml` to `ghcr.io/anijeyranyan/cinemaabyss/<service>:latest`.
+3. Write a Deployment and a Service for `events-service` and `proxy-service`. The proxy reads its settings from `app-config`, and it has a readiness probe on `/health`.
+4. Route all ingress traffic to `proxy-service`, including `/api/events`, in `src/kubernetes/ingress.yaml`. The Postman event tests then go through the gateway.
+5. Apply the manifests in order: namespace, configmap, secret, dockerconfigsecret, postgres-init-configmap, postgres, Kafka (`kafka/kafka.yaml`), monolith, movies-service, events-service, proxy-service.
+6. Check the pods with `kubectl -n cinemaabyss get pod`. Postgres, Kafka and ZooKeeper, the monolith, movies, events and proxy all show `Running`.
+7. Enable the ingress add-on (`minikube addons enable ingress`), apply `ingress.yaml`, add `127.0.0.1 cinemaabyss.example.com` to `/etc/hosts`, and run `minikube tunnel`.
+8. Open https://cinemaabyss.example.com/api/movies to see the list of movies. The `MOVIES_MIGRATION_PERCENT` value in `src/kubernetes/configmap.yaml` controls which backend serves them.
+9. Run `npm run test:kubernetes` from `tests/postman`. The health-check tests fail as expected, and event creation passes. Check the event processing in the events-service log.
+
+Screenshots:
+
+Output of `https://cinemaabyss.example.com/api/movies`:
+
+![Movies list through the ingress](tests/postman/reports/example.com.png)
+
+Event-service log after the tests (`kubectl -n cinemaabyss logs deploy/events-service`):
+
+![events-service log: consumed events](tests/postman/reports/service_logs.png)
+
+The full log is in `tests/postman/reports/service_logs.txt`.
+
+# Task 4: Helm chart
+
+The chart is in `src/kubernetes/helm` (`Chart.yaml`, `values.yaml`, `templates/`).
+
+Steps:
+1. Fill in `values.yaml`:
+   - `proxyService` with the image repository `ghcr.io/anijeyranyan/cinemaabyss/proxy-service`, `tag: latest`, `pullPolicy: Always`, one replica, CPU and memory limits, and service port 80 mapped to target port 8000.
+   - The same image, port and service blocks for `eventsService`, `monolith` and `moviesService`.
+   - A `config` block with the shared non-secret settings (service URLs, `GRADUAL_MIGRATION`, `MOVIES_MIGRATION_PERCENT`).
+   - `imagePullSecrets.dockerconfigjson`: the base64 of the Docker config. The committed value is a placeholder, and CI overrides it at install time.
+2. Write the templates in `templates/services/`:
+   - `proxy-service.yaml` and `events-service.yaml`, plus `monolith.yaml` and `movies-service.yaml`. Each has a Deployment and a Service, and reads its image, port and resources from `values.yaml`.
+   - The proxy Deployment gets its routing settings from the `config` block.
+3. Add the shared templates: `config.yaml` (ConfigMap), `secrets.yaml` (Postgres credentials, connection string and the pull secret), `ingress.yaml` (routes everything to `proxy-service`), and `infrastructure/postgres.yaml` and `infrastructure/kafka.yaml`.
+4. Add a Helm test hook in `templates/tests/api-tests.yaml`. It checks the health endpoints and creates a movie, user and payment event from inside the cluster, and it fails if any call doesn't return the expected status.
+5. Install or upgrade the release:
    ```bash
-   curl http://localhost:8000/api/movies
+   helm upgrade --install cinemaabyss .\src\kubernetes\helm --namespace cinemaabyss --create-namespace
    ```
-- Протестируйте постепенный переход, изменив переменную окружения MOVIES_MIGRATION_PERCENT в файле docker-compose.yml.
+   The release reached revision 6 with status `deployed`.
+6. Check the pods with `kubectl get pods -n cinemaabyss`. All services are `Running`, and the `cinemaabyss-api-tests` pod is `Completed`.
+7. Open https://cinemaabyss.example.com/api/movies through `minikube tunnel` and check the movie list.
 
+Screenshots:
 
-### 2. Kafka
- Вам как архитектуру нужно также проверить гипотезу насколько просто реализовать применение Kafka в данной архитектуре.
+Helm deployment and pod status:
 
-Для этого нужно сделать MVP сервис events, который будет при вызове API создавать и сам же читать сообщения в топике Kafka.
+![Helm deployment and pods](tests/postman/reports/helm_pods.png)
 
-    - Разработайте сервис на любом языке программирования с consumer'ами и producer'ами.
-    - Реализуйте простой API, при вызове которого будут создаваться события User/Payment/Movie и обрабатываться внутри сервиса с записью в лог
-    - Добавьте в docker-compose новый сервис, kafka там уже есть
+Output of https://cinemaabyss.example.com/api/movies:
 
-Необходимые тесты для проверки этого API вызываются при запуске npm run test:local из папки tests/postman 
-Приложите скриншот тестов и скриншот состояния топиков Kafka из UI http://localhost:8090 
-
-# Задание 3
-
-Команда начала переезд в Kubernetes для лучшего масштабирования и повышения надежности. 
-Вам, как архитектору осталось самое сложное:
- - реализовать CI/CD для сборки прокси сервиса
- - реализовать необходимые конфигурационные файлы для переключения трафика.
-
-
-### CI/CD
-
- В папке .github/worflows доработайте деплой новых сервисов proxy и events в docker-build-push.yml , чтобы api-tests при сборке отрабатывали корректно при отправке коммита в ваш репозиторий.
-
-Нужно доработать 
-```yaml
-on:
-  push:
-    branches: [ main ]
-    paths:
-      - 'src/**'
-      - '.github/workflows/docker-build-push.yml'
-  release:
-    types: [published]
-```
-и добавить необходимые шаги в блок
-```yaml
-jobs:
-  build-and-push:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-
-      - name: Log in to the Container registry
-        uses: docker/login-action@v2
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-```
-Как только сборка отработает и в github registry появятся ваши образы, можно переходить к блоку настройки Kubernetes
-Успешным результатом данного шага является "зеленая" сборка и "зеленые" тесты
-
-
-### Proxy в Kubernetes
-
-#### Шаг 1
-Для деплоя в kubernetes необходимо залогиниться в docker registry Github'а.
-1. Создайте Personal Access Token (PAT) https://github.com/settings/tokens . Создавайте class с правом read:packages
-2. В src/kubernetes/*.yaml (event-service, monolith, movies-service и proxy-service)  отредактируйте путь до ваших образов 
-```bash
- spec:
-      containers:
-      - name: events-service
-        image: ghcr.io/ваш логин/имя репозитория/events-service:latest
-```
-3. Добавьте в секрет src/kubernetes/dockerconfigsecret.yaml в поле
-```bash
- .dockerconfigjson: значение в base64 файла ~/.docker/config.json
-```
-
-4. Если в ~/.docker/config.json нет значения для аутентификации
-```json
-{
-        "auths": {
-                "ghcr.io": {
-                       тут пусто
-                }
-        }
-}
-```
-то выполните 
-
-и добавьте
-
-```json 
- "auth": "имя пользователя:токен в base64"
-```
-
-Чтобы получить значение в base64 можно выполнить команду
-```bash
- echo -n ваш_логин:ваш_токен | base64
-```
-
-После заполнения config.json, также прогоните содержимое через base64
-
-```bash
-cat .docker/config.json | base64
-```
-
-и полученное значение добавляем в
-
-```bash
- .dockerconfigjson: значение в base64 файла ~/.docker/config.json
-```
-
-#### Шаг 2
-
-  Доработайте src/kubernetes/event-service.yaml и src/kubernetes/proxy-service.yaml
-
-  - Необходимо создать Deployment и Service 
-  - Доработайте ingress.yaml, чтобы можно было с помощью тестов проверить создание событий
-  - Выполните дальшейшие шаги для поднятия кластера:
-
-  1. Создайте namespace:
-  ```bash
-  kubectl apply -f src/kubernetes/namespace.yaml
-  ```
-  2. Создайте секреты и переменные
-  ```bash
-  kubectl apply -f src/kubernetes/configmap.yaml
-  kubectl apply -f src/kubernetes/secret.yaml
-  kubectl apply -f src/kubernetes/dockerconfigsecret.yaml
-  kubectl apply -f src/kubernetes/postgres-init-configmap.yaml
-  ```
-
-  3. Разверните базу данных:
-  ```bash
-  kubectl apply -f src/kubernetes/postgres.yaml
-  ```
-
-  На этом этапе если вызвать команду
-  ```bash
-  kubectl -n cinemaabyss get pod
-  ```
-  Вы увидите
-
-  NAME         READY   STATUS    
-  postgres-0   1/1     Running   
-
-  4. Разверните Kafka:
-  ```bash
-  kubectl apply -f src/kubernetes/kafka/kafka.yaml
-  ```
-
-  Проверьте, теперь должно быть запущено 3 пода, если что-то не так, то посмотрите логи
-  ```bash
-  kubectl -n cinemaabyss logs имя_пода (например - kafka-0)
-  ```
-
-  5. Разверните монолит:
-  ```bash
-  kubectl apply -f src/kubernetes/monolith.yaml
-  ```
-  6. Разверните микросервисы:
-  ```bash
-  kubectl apply -f src/kubernetes/movies-service.yaml
-  kubectl apply -f src/kubernetes/events-service.yaml
-  ```
-  7. Разверните прокси-сервис:
-  ```bash
-  kubectl apply -f src/kubernetes/proxy-service.yaml
-  ```
-
-  После запуска и поднятия подов вывод команды 
-  ```bash
-  kubectl -n cinemaabyss get pod
-  ```
-
-  Будет наподобие такого
-
-```bash
-  NAME                              READY   STATUS    
-
-  events-service-7587c6dfd5-6whzx   1/1     Running  
-
-  kafka-0                           1/1     Running   
-
-  monolith-8476598495-wmtmw         1/1     Running  
-
-  movies-service-6d5697c584-4qfqs   1/1     Running  
-
-  postgres-0                        1/1     Running  
-
-  proxy-service-577d6c549b-6qfcv    1/1     Running  
-
-  zookeeper-0                       1/1     Running 
-```
-
-  8. Добавим ingress
-
-  - добавьте аддон
-  ```bash
-  minikube addons enable ingress
-  ```
-  ```bash
-  kubectl apply -f src/kubernetes/ingress.yaml
-  ```
-  9. Добавьте в /etc/hosts
-  127.0.0.1 cinemaabyss.example.com
-
-  10. Вызовите
-  ```bash
-  minikube tunnel
-  ```
-  11. Вызовите https://cinemaabyss.example.com/api/movies
-  Вы должны увидеть вывод списка фильмов
-  Можно поэкспериментировать со значением   MOVIES_MIGRATION_PERCENT в src/kubernetes/configmap.yaml и убедится, что вызовы movies уходят полностью в новый сервис
-
-  12. Запустите тесты из папки tests/postman
-  ```bash
-   npm run test:kubernetes
-  ```
-  Часть тестов с health-чек упадет, но создание событий отработает.
-  Откройте логи event-service и сделайте скриншот обработки событий
-
-#### Шаг 3
-Добавьте сюда скриншота вывода при вызове https://cinemaabyss.example.com/api/movies и  скриншот вывода event-service после вызова тестов.
-
-
-# Задание 4
-Для простоты дальнейшего обновления и развертывания вам как архитектуру необходимо так же реализовать helm-чарты для прокси-сервиса и проверить работу 
-
-Для этого:
-1. Перейдите в директорию helm и отредактируйте файл values.yaml
-
-```yaml
-# Proxy service configuration
-proxyService:
-  enabled: true
-  image:
-    repository: ghcr.io/db-exp/cinemaabysstest/proxy-service
-    tag: latest
-    pullPolicy: Always
-  replicas: 1
-  resources:
-    limits:
-      cpu: 300m
-      memory: 256Mi
-    requests:
-      cpu: 100m
-      memory: 128Mi
-  service:
-    port: 80
-    targetPort: 8000
-    type: ClusterIP
-```
-
-- Вместо ghcr.io/db-exp/cinemaabysstest/proxy-service напишите свой путь до образа для всех сервисов
-- для imagePullSecret проставьте свое значение (скопируйте из конфигурации kubernetes)
-  ```yaml
-  imagePullSecrets:
-      dockerconfigjson: ewoJImF1dGhzIjogewoJCSJnaGNyLmlvIjogewoJCQkiYXV0aCI6ICJaR0l0Wlhod09tZG9jRjl2UTJocVZIa3dhMWhKVDIxWmFVZHJOV2hRUW10aFVXbFZSbTVaTjJRMFNYUjRZMWM9IgoJCX0KCX0sCgkiY3JlZHNTdG9yZSI6ICJkZXNrdG9wIiwKCSJjdXJyZW50Q29udGV4dCI6ICJkZXNrdG9wLWxpbnV4IiwKCSJwbHVnaW5zIjogewoJCSIteC1jbGktaGludHMiOiB7CgkJCSJlbmFibGVkIjogInRydWUiCgkJfQoJfSwKCSJmZWF0dXJlcyI6IHsKCQkiaG9va3MiOiAidHJ1ZSIKCX0KfQ==
-  ```
-
-2. В папке ./templates/services заполните шаблоны для proxy-service.yaml и events-service.yaml (опирайтесь на свою kubernetes конфигурацию - смысл helm'а сделать шаблоны для быстрого обновления и установки)
-
-```yaml
-template:
-    metadata:
-      labels:
-        app: proxy-service
-    spec:
-      containers:
-       Тут ваша конфигурация
-```
-
-3. Проверьте установку
-Сначала удалим установку руками
-
-```bash
-kubectl delete all --all -n cinemaabyss
-kubectl delete  namespace cinemaabyss
-```
-Запустите 
-```bash
-helm install cinemaabyss .\src\kubernetes\helm --namespace cinemaabyss --create-namespace
-```
-Если в процессе будет ошибка
-```code
-[2025-04-08 21:43:38,780] ERROR Fatal error during KafkaServer startup. Prepare to shutdown (kafka.server.KafkaServer)
-kafka.common.InconsistentClusterIdException: The Cluster ID OkOjGPrdRimp8nkFohYkCw doesn't match stored clusterId Some(sbkcoiSiQV2h_mQpwy05zQ) in meta.properties. The broker is trying to join the wrong cluster. Configured zookeeper.connect may be wrong.
-```
-
-Проверьте развертывание:
-```bash
-kubectl get pods -n cinemaabyss
-minikube tunnel
-```
-
-Потом вызовите 
-https://cinemaabyss.example.com/api/movies
-и приложите скриншот развертывания helm и вывода https://cinemaabyss.example.com/api/movies
-
-## Удаляем все
-
-```bash
-kubectl delete all --all -n cinemaabyss
-kubectl delete namespace cinemaabyss
-```
+![Movies list through the ingress](tests/postman/reports/example.com.png)

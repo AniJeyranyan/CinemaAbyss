@@ -2,10 +2,10 @@ openapi: 3.0.3
 info:
   title: CinemaAbyss API
   description: |
-    API спецификация для системы CinemaAbyss, включающая монолит и микросервисы.
-    
-    Система CinemaAbyss представляет собой платформу для управления фильмами, пользователями, платежами и подписками.
-    Архитектура системы включает монолитное приложение и выделенные микросервисы.
+    API specification for the CinemaAbyss system, covering the monolith and the microservices.
+
+    CinemaAbyss is a platform for managing movies, users, payments and subscriptions.
+    The system architecture includes a monolithic application and dedicated microservices.
   version: 1.0.0
   contact:
     name: CinemaAbyss Team
@@ -15,55 +15,55 @@ servers:
   - url: http://localhost:8000
     description: API Gateway (Proxy Service)
   - url: http://localhost:8080
-    description: Монолитное приложение
+    description: Monolith application
   - url: http://localhost:8081
-    description: Микросервис фильмов
+    description: Movies microservice
   - url: http://localhost:8082
-    description: Микросервис событий
+    description: Events microservice
 
 tags:
   - name: users
-    description: Операции с пользователями
+    description: User operations
   - name: movies
-    description: Операции с фильмами
+    description: Movie operations
   - name: payments
-    description: Операции с платежами
+    description: Payment operations
   - name: subscriptions
-    description: Операции с подписками
+    description: Subscription operations
   - name: events
-    description: Операции с событиями
+    description: Event operations
   - name: health
-    description: Проверка работоспособности сервисов
+    description: Service health checks
 
 paths:
-  # Общие эндпоинты для проверки работоспособности
+  # Common health check endpoints
   /health:
     get:
       tags:
         - health
-      summary: Проверка работоспособности API Gateway
-      description: Возвращает статус работоспособности прокси-сервиса
+      summary: API Gateway health check
+      description: Returns the health status of the proxy service
       operationId: getProxyHealth
       responses:
         '200':
-          description: Успешный ответ
+          description: Successful response
           content:
             text/plain:
               schema:
                 type: string
                 example: Strangler Fig Proxy is healthy
 
-  # Монолит и микросервис фильмов
+  # Monolith and movies microservice
   /api/movies:
     get:
       tags:
         - movies
-      summary: Получение списка всех фильмов
-      description: Возвращает список всех фильмов с их метаданными
+      summary: Get all movies
+      description: Returns the list of all movies with their metadata
       operationId: getAllMovies
       responses:
         '200':
-          description: Успешный ответ
+          description: Successful response
           content:
             application/json:
               schema:
@@ -71,7 +71,7 @@ paths:
                 items:
                   $ref: '#/components/schemas/Movie'
         '500':
-          description: Внутренняя ошибка сервера
+          description: Internal server error
           content:
             application/json:
               schema:
@@ -79,11 +79,11 @@ paths:
     post:
       tags:
         - movies
-      summary: Создание нового фильма
-      description: Добавляет новый фильм в систему
+      summary: Create a movie
+      description: Adds a new movie to the system
       operationId: createMovie
       requestBody:
-        description: Данные фильма для создания
+        description: Movie data to create
         required: true
         content:
           application/json:
@@ -91,19 +91,19 @@ paths:
               $ref: '#/components/schemas/MovieInput'
       responses:
         '201':
-          description: Фильм успешно создан
+          description: Movie created successfully
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Movie'
         '400':
-          description: Некорректный запрос
+          description: Invalid request
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
         '500':
-          description: Внутренняя ошибка сервера
+          description: Internal server error
           content:
             application/json:
               schema:
@@ -113,12 +113,12 @@ paths:
     get:
       tags:
         - health
-      summary: Проверка работоспособности микросервиса фильмов
-      description: Возвращает статус работоспособности микросервиса фильмов
+      summary: Movies microservice health check
+      description: Returns the health status of the movies microservice
       operationId: getMoviesServiceHealth
       responses:
         '200':
-          description: Успешный ответ
+          description: Successful response
           content:
             application/json:
               schema:
@@ -128,17 +128,17 @@ paths:
                     type: boolean
                     example: true
 
-  # Монолит - пользователи
+  # Monolith - users
   /api/users:
     get:
       tags:
         - users
-      summary: Получение списка всех пользователей
-      description: Возвращает список всех пользователей системы
+      summary: Get all users
+      description: Returns the list of all users in the system
       operationId: getAllUsers
       responses:
         '200':
-          description: Успешный ответ
+          description: Successful response
           content:
             application/json:
               schema:
@@ -146,7 +146,7 @@ paths:
                 items:
                   $ref: '#/components/schemas/User'
         '500':
-          description: Внутренняя ошибка сервера
+          description: Internal server error
           content:
             application/json:
               schema:
@@ -154,11 +154,11 @@ paths:
     post:
       tags:
         - users
-      summary: Создание нового пользователя
-      description: Регистрирует нового пользователя в системе
+      summary: Create a user
+      description: Registers a new user in the system
       operationId: createUser
       requestBody:
-        description: Данные пользователя для создания
+        description: User data to create
         required: true
         content:
           application/json:
@@ -166,42 +166,42 @@ paths:
               $ref: '#/components/schemas/UserInput'
       responses:
         '201':
-          description: Пользователь успешно создан
+          description: User created successfully
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/User'
         '400':
-          description: Некорректный запрос
+          description: Invalid request
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
         '500':
-          description: Внутренняя ошибка сервера
+          description: Internal server error
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  # Монолит - платежи
+  # Monolith - payments
   /api/payments:
     get:
       tags:
         - payments
-      summary: Получение списка всех платежей
-      description: Возвращает список всех платежей в системе
+      summary: Get all payments
+      description: Returns the list of all payments in the system
       operationId: getAllPayments
       parameters:
         - name: user_id
           in: query
-          description: ID пользователя для фильтрации платежей
+          description: User ID to filter payments by
           required: false
           schema:
             type: integer
       responses:
         '200':
-          description: Успешный ответ
+          description: Successful response
           content:
             application/json:
               schema:
@@ -209,7 +209,7 @@ paths:
                 items:
                   $ref: '#/components/schemas/Payment'
         '500':
-          description: Внутренняя ошибка сервера
+          description: Internal server error
           content:
             application/json:
               schema:
@@ -217,11 +217,11 @@ paths:
     post:
       tags:
         - payments
-      summary: Создание нового платежа
-      description: Регистрирует новый платеж в системе
+      summary: Create a payment
+      description: Registers a new payment in the system
       operationId: createPayment
       requestBody:
-        description: Данные платежа для создания
+        description: Payment data to create
         required: true
         content:
           application/json:
@@ -229,42 +229,42 @@ paths:
               $ref: '#/components/schemas/PaymentInput'
       responses:
         '201':
-          description: Платеж успешно создан
+          description: Payment created successfully
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Payment'
         '400':
-          description: Некорректный запрос
+          description: Invalid request
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
         '500':
-          description: Внутренняя ошибка сервера
+          description: Internal server error
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  # Монолит - подписки
+  # Monolith - subscriptions
   /api/subscriptions:
     get:
       tags:
         - subscriptions
-      summary: Получение списка всех подписок
-      description: Возвращает список всех подписок в системе
+      summary: Get all subscriptions
+      description: Returns the list of all subscriptions in the system
       operationId: getAllSubscriptions
       parameters:
         - name: user_id
           in: query
-          description: ID пользователя для фильтрации подписок
+          description: User ID to filter subscriptions by
           required: false
           schema:
             type: integer
       responses:
         '200':
-          description: Успешный ответ
+          description: Successful response
           content:
             application/json:
               schema:
@@ -272,7 +272,7 @@ paths:
                 items:
                   $ref: '#/components/schemas/Subscription'
         '500':
-          description: Внутренняя ошибка сервера
+          description: Internal server error
           content:
             application/json:
               schema:
@@ -280,11 +280,11 @@ paths:
     post:
       tags:
         - subscriptions
-      summary: Создание новой подписки
-      description: Регистрирует новую подписку в системе
+      summary: Create a subscription
+      description: Registers a new subscription in the system
       operationId: createSubscription
       requestBody:
-        description: Данные подписки для создания
+        description: Subscription data to create
         required: true
         content:
           application/json:
@@ -292,35 +292,35 @@ paths:
               $ref: '#/components/schemas/SubscriptionInput'
       responses:
         '201':
-          description: Подписка успешно создана
+          description: Subscription created successfully
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Subscription'
         '400':
-          description: Некорректный запрос
+          description: Invalid request
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
         '500':
-          description: Внутренняя ошибка сервера
+          description: Internal server error
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  # Микросервис событий
+  # Events microservice
   /api/events/health:
     get:
       tags:
         - health
-      summary: Проверка работоспособности микросервиса событий
-      description: Возвращает статус работоспособности микросервиса событий
+      summary: Events microservice health check
+      description: Returns the health status of the events microservice
       operationId: getEventsServiceHealth
       responses:
         '200':
-          description: Успешный ответ
+          description: Successful response
           content:
             application/json:
               schema:
@@ -334,11 +334,11 @@ paths:
     post:
       tags:
         - events
-      summary: Создание события фильма
-      description: Регистрирует новое событие, связанное с фильмом
+      summary: Create a movie event
+      description: Registers a new event related to a movie
       operationId: createMovieEvent
       requestBody:
-        description: Данные события фильма
+        description: Movie event data
         required: true
         content:
           application/json:
@@ -346,19 +346,19 @@ paths:
               $ref: '#/components/schemas/MovieEvent'
       responses:
         '201':
-          description: Событие успешно создано
+          description: Event created successfully
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/EventResponse'
         '400':
-          description: Некорректный запрос
+          description: Invalid request
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
         '500':
-          description: Внутренняя ошибка сервера
+          description: Internal server error
           content:
             application/json:
               schema:
@@ -368,11 +368,11 @@ paths:
     post:
       tags:
         - events
-      summary: Создание события пользователя
-      description: Регистрирует новое событие, связанное с пользователем
+      summary: Create a user event
+      description: Registers a new event related to a user
       operationId: createUserEvent
       requestBody:
-        description: Данные события пользователя
+        description: User event data
         required: true
         content:
           application/json:
@@ -380,19 +380,19 @@ paths:
               $ref: '#/components/schemas/UserEvent'
       responses:
         '201':
-          description: Событие успешно создано
+          description: Event created successfully
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/EventResponse'
         '400':
-          description: Некорректный запрос
+          description: Invalid request
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
         '500':
-          description: Внутренняя ошибка сервера
+          description: Internal server error
           content:
             application/json:
               schema:
@@ -402,11 +402,11 @@ paths:
     post:
       tags:
         - events
-      summary: Создание события платежа
-      description: Регистрирует новое событие, связанное с платежом
+      summary: Create a payment event
+      description: Registers a new event related to a payment
       operationId: createPaymentEvent
       requestBody:
-        description: Данные события платежа
+        description: Payment event data
         required: true
         content:
           application/json:
@@ -414,19 +414,19 @@ paths:
               $ref: '#/components/schemas/PaymentEvent'
       responses:
         '201':
-          description: Событие успешно создано
+          description: Event created successfully
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/EventResponse'
         '400':
-          description: Некорректный запрос
+          description: Invalid request
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
         '500':
-          description: Внутренняя ошибка сервера
+          description: Internal server error
           content:
             application/json:
               schema:
@@ -434,32 +434,32 @@ paths:
 
 components:
   schemas:
-    # Основные модели данных
+    # Core data models
     Movie:
       type: object
       properties:
         id:
           type: integer
-          description: Уникальный идентификатор фильма
+          description: Unique movie identifier
           example: 1
         title:
           type: string
-          description: Название фильма
+          description: Movie title
           example: "Inception"
         description:
           type: string
-          description: Описание фильма
+          description: Movie description
           example: "A thief who steals corporate secrets through the use of dream-sharing technology is given the inverse task of planting an idea into the mind of a C.E.O."
         genres:
           type: array
-          description: Жанры фильма
+          description: Movie genres
           items:
             type: string
           example: ["Sci-Fi", "Action", "Thriller"]
         rating:
           type: number
           format: float
-          description: Рейтинг фильма
+          description: Movie rating
           example: 8.8
       required:
         - id
@@ -472,22 +472,22 @@ components:
       properties:
         title:
           type: string
-          description: Название фильма
+          description: Movie title
           example: "Inception"
         description:
           type: string
-          description: Описание фильма
+          description: Movie description
           example: "A thief who steals corporate secrets through the use of dream-sharing technology is given the inverse task of planting an idea into the mind of a C.E.O."
         genres:
           type: array
-          description: Жанры фильма
+          description: Movie genres
           items:
             type: string
           example: ["Sci-Fi", "Action", "Thriller"]
         rating:
           type: number
           format: float
-          description: Рейтинг фильма
+          description: Movie rating
           example: 8.8
       required:
         - title
@@ -499,16 +499,16 @@ components:
       properties:
         id:
           type: integer
-          description: Уникальный идентификатор пользователя
+          description: Unique user identifier
           example: 1
         username:
           type: string
-          description: Имя пользователя
+          description: Username
           example: "john_doe"
         email:
           type: string
           format: email
-          description: Email пользователя
+          description: User email
           example: "john.doe@example.com"
       required:
         - id
@@ -520,12 +520,12 @@ components:
       properties:
         username:
           type: string
-          description: Имя пользователя
+          description: Username
           example: "john_doe"
         email:
           type: string
           format: email
-          description: Email пользователя
+          description: User email
           example: "john.doe@example.com"
       required:
         - username
@@ -536,21 +536,21 @@ components:
       properties:
         id:
           type: integer
-          description: Уникальный идентификатор платежа
+          description: Unique payment identifier
           example: 1
         user_id:
           type: integer
-          description: Идентификатор пользователя, совершившего платеж
+          description: ID of the user who made the payment
           example: 1
         amount:
           type: number
           format: float
-          description: Сумма платежа
+          description: Payment amount
           example: 9.99
         timestamp:
           type: string
           format: date-time
-          description: Время совершения платежа
+          description: Time the payment was made
           example: "2023-01-15T14:30:00Z"
       required:
         - id
@@ -563,12 +563,12 @@ components:
       properties:
         user_id:
           type: integer
-          description: Идентификатор пользователя, совершающего платеж
+          description: ID of the user making the payment
           example: 1
         amount:
           type: number
           format: float
-          description: Сумма платежа
+          description: Payment amount
           example: 9.99
       required:
         - user_id
@@ -579,25 +579,25 @@ components:
       properties:
         id:
           type: integer
-          description: Уникальный идентификатор подписки
+          description: Unique subscription identifier
           example: 1
         user_id:
           type: integer
-          description: Идентификатор пользователя, оформившего подписку
+          description: ID of the user who took out the subscription
           example: 1
         plan_type:
           type: string
-          description: Тип плана подписки
+          description: Subscription plan type
           example: "premium"
         start_date:
           type: string
           format: date-time
-          description: Дата начала подписки
+          description: Subscription start date
           example: "2023-01-01T00:00:00Z"
         end_date:
           type: string
           format: date-time
-          description: Дата окончания подписки
+          description: Subscription end date
           example: "2023-12-31T23:59:59Z"
       required:
         - id
@@ -611,21 +611,21 @@ components:
       properties:
         user_id:
           type: integer
-          description: Идентификатор пользователя, оформляющего подписку
+          description: ID of the user taking out the subscription
           example: 1
         plan_type:
           type: string
-          description: Тип плана подписки
+          description: Subscription plan type
           example: "premium"
         start_date:
           type: string
           format: date-time
-          description: Дата начала подписки
+          description: Subscription start date
           example: "2023-01-01T00:00:00Z"
         end_date:
           type: string
           format: date-time
-          description: Дата окончания подписки
+          description: Subscription end date
           example: "2023-12-31T23:59:59Z"
       required:
         - user_id
@@ -633,26 +633,26 @@ components:
         - start_date
         - end_date
 
-    # Модели событий
+    # Event models
     Event:
       type: object
       properties:
         id:
           type: string
-          description: Уникальный идентификатор события
+          description: Unique event identifier
           example: "movie-1-viewed"
         type:
           type: string
-          description: Тип события
+          description: Event type
           example: "movie"
         timestamp:
           type: string
           format: date-time
-          description: Время события
+          description: Event time
           example: "2023-01-15T14:30:00Z"
         payload:
           type: object
-          description: Полезная нагрузка события (зависит от типа события)
+          description: Event payload (depends on the event type)
       required:
         - id
         - type
@@ -664,34 +664,34 @@ components:
       properties:
         movie_id:
           type: integer
-          description: Идентификатор фильма
+          description: Movie identifier
           example: 1
         title:
           type: string
-          description: Название фильма
+          description: Movie title
           example: "Inception"
         action:
           type: string
-          description: Действие с фильмом
+          description: Action performed on the movie
           example: "viewed"
         user_id:
           type: integer
-          description: Идентификатор пользователя (опционально)
+          description: User identifier (optional)
           example: 1
         rating:
           type: number
           format: float
-          description: Рейтинг (опционально)
+          description: Rating (optional)
           example: 8.5
         genres:
           type: array
-          description: Жанры фильма (опционально)
+          description: Movie genres (optional)
           items:
             type: string
           example: ["Sci-Fi", "Action"]
         description:
           type: string
-          description: Описание фильма (опционально)
+          description: Movie description (optional)
           example: "A mind-bending thriller"
       required:
         - movie_id
@@ -703,24 +703,24 @@ components:
       properties:
         user_id:
           type: integer
-          description: Идентификатор пользователя
+          description: User identifier
           example: 1
         username:
           type: string
-          description: Имя пользователя (опционально)
+          description: Username (optional)
           example: "john_doe"
         email:
           type: string
-          description: Email пользователя (опционально)
+          description: User email (optional)
           example: "john.doe@example.com"
         action:
           type: string
-          description: Действие пользователя
+          description: Action performed by the user
           example: "registered"
         timestamp:
           type: string
           format: date-time
-          description: Время события
+          description: Event time
           example: "2023-01-15T14:30:00Z"
       required:
         - user_id
@@ -732,29 +732,29 @@ components:
       properties:
         payment_id:
           type: integer
-          description: Идентификатор платежа
+          description: Payment identifier
           example: 1
         user_id:
           type: integer
-          description: Идентификатор пользователя
+          description: User identifier
           example: 1
         amount:
           type: number
           format: float
-          description: Сумма платежа
+          description: Payment amount
           example: 9.99
         status:
           type: string
-          description: Статус платежа
+          description: Payment status
           example: "completed"
         timestamp:
           type: string
           format: date-time
-          description: Время платежа
+          description: Payment time
           example: "2023-01-15T14:30:00Z"
         method_type:
           type: string
-          description: Тип метода оплаты (опционально)
+          description: Payment method type (optional)
           example: "credit_card"
       required:
         - payment_id
@@ -768,15 +768,15 @@ components:
       properties:
         status:
           type: string
-          description: Статус операции
+          description: Operation status
           example: "success"
         partition:
           type: integer
-          description: Партиция Kafka
+          description: Kafka partition
           example: 0
         offset:
           type: integer
-          description: Смещение в партиции Kafka
+          description: Offset within the Kafka partition
           example: 42
         event:
           $ref: '#/components/schemas/Event'
@@ -791,7 +791,7 @@ components:
       properties:
         error:
           type: string
-          description: Сообщение об ошибке
+          description: Error message
           example: "Internal Server Error"
       required:
         - error
