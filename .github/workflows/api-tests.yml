@@ -2,9 +2,9 @@ name: API Tests
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, master, cinema ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ main, master, cinema ]
   workflow_dispatch:
     inputs:
       environment:
@@ -27,21 +27,37 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Docker Compose
         run: |
           docker compose --version
-      
+
       - name: Start services with Docker Compose
+        run: docker compose up -d --build
+
+      - name: Wait for services to be healthy
         run: |
-          docker compose up -d
-          # Wait for services to be ready
-          echo "Waiting for services to be ready..."
-          sleep 120
-      
+          # Poll the health endpoints instead of a fixed sleep: fails fast if a service never comes up
+          check() {
+            local name=$1 url=$2
+            for i in $(seq 1 60); do
+              if curl -sf -o /dev/null "$url"; then
+                echo "$name is ready ($url)"
+                return 0
+              fi
+              sleep 5
+            done
+            echo "::error::$name did not become ready in time ($url)"
+            return 1
+          }
+          check monolith      http://127.0.0.1:8080/health
+          check movies        http://127.0.0.1:8081/api/movies/health
+          check events        http://127.0.0.1:8082/api/events/health
+          check proxy         http://127.0.0.1:8000/health
+
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '18'
           cache: 'npm'
@@ -62,6 +78,18 @@ jobs:
           docker run --network=cinemaabyss-network -v "$(pwd)/reports:/app/reports" cinemaabyss-api-tests
         
       
+      - name: Dump service logs on failure
+        if: failure()
+        run: docker compose logs --no-color --tail=200
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-test-reports
+          path: tests/postman/reports
+          if-no-files-found: ignore
+
       - name: Stop services
         if: always()
         run: docker compose down
