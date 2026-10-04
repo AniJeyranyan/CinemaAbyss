@@ -1,6 +1,0 @@
-@CinemaAbyss.Proxy.Api_HostAddress = http://localhost:5226
-
-GET {{CinemaAbyss.Proxy.Api_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###

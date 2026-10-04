@@ -127,7 +127,7 @@ Clients have no direct access to domain services; they are reachable only inside
 
 Renewals work the same way: a failed renewal payment moves the subscription to `suspended` through an event.
 
-Event schema: `EventEnvelope` (already implemented in `src/Events/CinemaAbyss.Events.Domain`). Domains publish events through the Transactional Outbox pattern, so an event is not lost if the process fails between the database write and the Kafka send.
+Event schema: `EventEnvelope` (already implemented in `src/microservices/events/CinemaAbyss.Events.Domain`). Domains publish events through the Transactional Outbox pattern, so an event is not lost if the process fails between the database write and the Kafka send.
 
 ## Migration from the Current System (Strangler Fig)
 

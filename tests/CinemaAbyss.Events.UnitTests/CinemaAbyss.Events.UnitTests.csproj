@@ -22,8 +22,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Events\CinemaAbyss.Events.Application\CinemaAbyss.Events.Application.csproj" />
-    <ProjectReference Include="..\..\src\Events\CinemaAbyss.Events.Domain\CinemaAbyss.Events.Domain.csproj" />
+    <ProjectReference Include="..\..\src\microservices\events\CinemaAbyss.Events.Domain\CinemaAbyss.Events.Domain.csproj" />
+    <ProjectReference Include="..\..\src\microservices\events\CinemaAbyss.Events.Application\CinemaAbyss.Events.Application.csproj" />
   </ItemGroup>
 
 </Project>

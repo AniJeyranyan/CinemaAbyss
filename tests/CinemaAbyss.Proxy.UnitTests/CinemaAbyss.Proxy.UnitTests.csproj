@@ -22,8 +22,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Proxy\CinemaAbyss.Proxy.Application\CinemaAbyss.Proxy.Application.csproj" />
-    <ProjectReference Include="..\..\src\Proxy\CinemaAbyss.Proxy.Domain\CinemaAbyss.Proxy.Domain.csproj" />
+    <ProjectReference Include="..\..\src\microservices\proxy\CinemaAbyss.Proxy.Domain\CinemaAbyss.Proxy.Domain.csproj" />
+    <ProjectReference Include="..\..\src\microservices\proxy\CinemaAbyss.Proxy.Application\CinemaAbyss.Proxy.Application.csproj" />
   </ItemGroup>
 
 </Project>
