@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CinemaAbyss.Proxy.Application\CinemaAbyss.Proxy.Application.csproj" />
+    <ProjectReference Include="..\CinemaAbyss.Proxy.Infrastructure\CinemaAbyss.Proxy.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

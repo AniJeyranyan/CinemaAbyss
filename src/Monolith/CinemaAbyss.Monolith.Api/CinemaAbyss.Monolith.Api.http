@@ -1,0 +1,6 @@
+@CinemaAbyss.Monolith.Api_HostAddress = http://localhost:5153
+
+GET {{CinemaAbyss.Monolith.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
