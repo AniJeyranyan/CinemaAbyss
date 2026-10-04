@@ -1,0 +1,91 @@
+# Proxy service configuration
+proxyService:
+  enabled: true
+  image:
+    repository: ghcr.io/anijeyranyan/cinemaabyss/proxy-service
+    tag: latest
+    pullPolicy: Always
+  replicas: 1
+  resources:
+    limits:
+      cpu: 300m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  service:
+    port: 80
+    targetPort: 8000
+    type: ClusterIP
+
+eventsService:
+  enabled: true
+  image:
+    repository: ghcr.io/anijeyranyan/cinemaabyss/events-service
+    tag: latest
+    pullPolicy: Always
+  replicas: 1
+  port: 8082
+  service:
+    port: 8082
+    type: ClusterIP
+
+monolith:
+  enabled: true
+  image:
+    repository: ghcr.io/anijeyranyan/cinemaabyss/monolith
+    tag: latest
+    pullPolicy: Always
+  replicas: 1
+  port: 8080
+  service:
+    port: 8080
+    type: ClusterIP
+
+moviesService:
+  enabled: true
+  image:
+    repository: ghcr.io/anijeyranyan/cinemaabyss/movies-service
+    tag: latest
+    pullPolicy: Always
+  replicas: 1
+  port: 8081
+  service:
+    port: 8081
+    type: ClusterIP
+
+# Image pull secret for ghcr.io: base64 of ~/.docker/config.json
+imagePullSecrets:
+  dockerconfigjson: REPLACE_WITH_BASE64_OF_DOCKER_CONFIG_JSON
+
+# Non-secret settings shared by the services
+config:
+  monolithUrl: http://monolith:8080
+  moviesServiceUrl: http://movies-service:8081
+  eventsServiceUrl: http://events-service:8082
+  gradualMigration: "true"
+  moviesMigrationPercent: "50"
+  kafkaBootstrapServers: kafka:9092
+  kafkaConsumerGroup: events-service
+
+# Database credentials (dev values, same as docker-compose)
+secrets:
+  postgresUser: postgres
+  postgresPassword: postgres_password
+  connectionString: "Host=postgres;Port=5432;Database=cinemaabyss;Username=postgres;Password=postgres_password"
+
+postgres:
+  image: postgres:14
+  storage: 1Gi
+
+kafka:
+  image: wurstmeister/kafka:2.13-2.7.0
+  topics: "movie-events:1:1,user-events:1:1,payment-events:1:1"
+
+zookeeper:
+  image: wurstmeister/zookeeper:latest
+
+ingress:
+  enabled: true
+  className: nginx
+  host: cinemaabyss.example.com

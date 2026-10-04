@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init
+  namespace: cinemaabyss
+data:
+  # Runs once on an empty data volume (mounted into /docker-entrypoint-initdb.d)
+  init.sql: |
+    SELECT 'CREATE DATABASE cinemaabyss'
+    WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'cinemaabyss')\gexec

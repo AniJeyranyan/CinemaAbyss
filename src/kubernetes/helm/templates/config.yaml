@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: {{ .Release.Namespace }}
+data:
+  MONOLITH_URL: {{ .Values.config.monolithUrl | quote }}
+  MOVIES_SERVICE_URL: {{ .Values.config.moviesServiceUrl | quote }}
+  EVENTS_SERVICE_URL: {{ .Values.config.eventsServiceUrl | quote }}
+  GRADUAL_MIGRATION: {{ .Values.config.gradualMigration | quote }}
+  MOVIES_MIGRATION_PERCENT: {{ .Values.config.moviesMigrationPercent | quote }}
+  KAFKA_BOOTSTRAP_SERVERS: {{ .Values.config.kafkaBootstrapServers | quote }}
+  KAFKA_CONSUMER_GROUP: {{ .Values.config.kafkaConsumerGroup | quote }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init
+  namespace: {{ .Release.Namespace }}
+data:
+  init.sql: |
+    SELECT 'CREATE DATABASE cinemaabyss'
+    WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'cinemaabyss')\gexec

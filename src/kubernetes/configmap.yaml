@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: cinemaabyss
+data:
+  # Service addresses inside the cluster
+  MONOLITH_URL: http://monolith:8080
+  MOVIES_SERVICE_URL: http://movies-service:8081
+  EVENTS_SERVICE_URL: http://events-service:8082
+
+  # Strangler Fig switch: share of /api/movies traffic sent to movies-service (0-100)
+  GRADUAL_MIGRATION: "true"
+  MOVIES_MIGRATION_PERCENT: "50"
+
+  # Kafka
+  KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+  KAFKA_CONSUMER_GROUP: events-service

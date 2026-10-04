@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: cinemaabyss
+  namespace: cinemaabyss
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: cinemaabyss.example.com
+      http:
+        paths:
+          # All traffic goes through the proxy (API Gateway), including /api/events for the event tests
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: proxy-service
+                port:
+                  number: 80
