@@ -1,0 +1,52 @@
+{{- if .Values.monolith.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: monolith
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: {{ .Values.monolith.replicas }}
+  selector:
+    matchLabels:
+      app: monolith
+  template:
+    metadata:
+      labels:
+        app: monolith
+    spec:
+      imagePullSecrets:
+        - name: ghcr-secret
+      containers:
+        - name: monolith
+          image: "{{ .Values.monolith.image.repository }}:{{ .Values.monolith.image.tag }}"
+          imagePullPolicy: {{ .Values.monolith.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.monolith.port }}
+          env:
+            - name: PORT
+              value: {{ .Values.monolith.port | quote }}
+            - name: ConnectionStrings__Default
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: ConnectionStrings__Default
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.monolith.port }}
+            initialDelaySeconds: 15
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: monolith
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: {{ .Values.monolith.service.type }}
+  selector:
+    app: monolith
+  ports:
+    - port: {{ .Values.monolith.service.port }}
+      targetPort: {{ .Values.monolith.port }}
+{{- end }}

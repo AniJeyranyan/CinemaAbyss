@@ -21,3 +21,4 @@ TestResults/
 ## OS
 .DS_Store
 Thumbs.db
+/tests/postman/node_modules/.bin

@@ -82,11 +82,11 @@ services:
     networks:
       - cinemaabyss-network
 
-  # Events microservice: produces and consumes Kafka events for movies/users/payments.
+  # Events microservice (C#): produces User/Payment/Movie events to Kafka and consumes them back, logging each one.
   events-service:
     build:
-      context: .
-      dockerfile: src/Events/CinemaAbyss.Events.Api/Dockerfile
+      context: ./src/microservices/events
+      dockerfile: CinemaAbyss.Events.Api/Dockerfile
     container_name: cinemaabyss-events-service
     depends_on:
       - kafka
@@ -94,32 +94,30 @@ services:
       - "8082:8082"
     environment:
       PORT: 8082
-      Kafka__BootstrapServers: kafka:9092
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_CONSUMER_GROUP: events-service
     networks:
       - cinemaabyss-network
 
-  # Proxy service (API Gateway) implementing the Strangler Fig pattern: routes
-  # /api/movies traffic between the monolith and movies-service by feature flag,
-  # and fronts users/payments/subscriptions (monolith) and events (events-service).
+  # Proxy service (API Gateway, C#) implementing the Strangler Fig pattern.
   proxy-service:
     build:
-      context: .
-      dockerfile: src/Proxy/CinemaAbyss.Proxy.Api/Dockerfile
+      context: ./src/microservices/proxy
+      dockerfile: CinemaAbyss.Proxy.Api/Dockerfile
     container_name: cinemaabyss-proxy-service
     depends_on:
       - monolith
       - movies-service
       - events-service
-    restart: on-failure:5
     ports:
       - "8000:8000"
     environment:
       PORT: 8000
-      Proxy__MonolithUrl: http://monolith:8080
-      Proxy__MoviesServiceUrl: http://movies-service:8081
-      Proxy__EventsServiceUrl: http://events-service:8082
-      Proxy__GradualMigration: "true"
-      Proxy__MoviesMigrationPercent: "50"
+      MONOLITH_URL: http://monolith:8080
+      MOVIES_SERVICE_URL: http://movies-service:8081
+      EVENTS_SERVICE_URL: http://events-service:8082
+      GRADUAL_MIGRATION: "true"
+      MOVIES_MIGRATION_PERCENT: "50"
     networks:
       - cinemaabyss-network
 

@@ -20,8 +20,8 @@ src/
     CinemaAbyss.Monolith.Infrastructure   # EF Core + Npgsql, migrations, repositories
     CinemaAbyss.Monolith.Api              # Controllers, Program.cs, Dockerfile
   Movies/                                 # movies microservice (Strangler Fig target)
-  Proxy/                                  # API Gateway implementing Strangler Fig routing
-  Events/                                 # Kafka producer + consumer for domain events
+  microservices/proxy/                    # API Gateway implementing Strangler Fig routing (Domain/Application/Infrastructure/Api)
+  microservices/events/                   # Kafka producer + consumer for domain events (Domain/Application/Infrastructure/Api)
 tests/
   CinemaAbyss.{Monolith,Movies,Proxy,Events}.UnitTests
 docker-compose.yml
@@ -97,8 +97,8 @@ Requires the .NET 8 SDK and a reachable Postgres/Kafka (e.g. `docker-compose up 
 ```bash
 dotnet run --project src/Monolith/CinemaAbyss.Monolith.Api
 dotnet run --project src/Movies/CinemaAbyss.Movies.Api
-dotnet run --project src/Events/CinemaAbyss.Events.Api
-dotnet run --project src/Proxy/CinemaAbyss.Proxy.Api
+dotnet run --project src/microservices/events/CinemaAbyss.Events.Api
+dotnet run --project src/microservices/proxy/CinemaAbyss.Proxy.Api
 ```
 
 Each service reads its connection info from `appsettings.json`, overridable via environment
